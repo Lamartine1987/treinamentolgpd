@@ -1,0 +1,116 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+:root {
+  --primary-color: #58cc02;
+  --primary-shadow: #58a700;
+  --primary-hover: #61e002;
+  --secondary-color: #1cb0f6;
+  --secondary-shadow: #1899d6;
+  --danger-color: #ff4b4b;
+  --danger-shadow: #ea2b2b;
+  --bg-color: #ffffff;
+  --text-main: #4b4b4b;
+  --text-light: #afafaf;
+  --border-color: #e5e5e5;
+  --card-bg: #ffffff;
+}
+
+body {
+  margin: 0;
+  font-family: 'Nunito', 'Varela Round', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Duolingo style button */
+.duo-button {
+  background-color: var(--primary-color);
+  color: white;
+  font-weight: bold;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 16px;
+  padding: 16px 24px;
+  cursor: pointer;
+  box-shadow: 0 4px 0 var(--primary-shadow);
+  transition: transform 0.1s, box-shadow 0.1s, background-color 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  width: 100%;
+}
+
+.duo-button:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 var(--primary-shadow);
+}
+
+.duo-button:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+}
+
+.duo-button.secondary {
+  background-color: var(--secondary-color);
+  box-shadow: 0 4px 0 var(--secondary-shadow);
+}
+.duo-button.secondary:active:not(:disabled) {
+  box-shadow: 0 0 0 var(--secondary-shadow);
+}
+
+.duo-button.danger {
+  background-color: var(--danger-color);
+  box-shadow: 0 4px 0 var(--danger-shadow);
+}
+.duo-button.danger:active:not(:disabled) {
+  box-shadow: 0 0 0 var(--danger-shadow);
+}
+
+.duo-button.outline {
+  background-color: transparent;
+  color: var(--text-main);
+  border: 2px solid var(--border-color);
+  box-shadow: 0 4px 0 var(--border-color);
+}
+.duo-button.outline:active:not(:disabled) {
+  box-shadow: 0 0 0 var(--border-color);
+}
+.duo-button.outline.selected {
+  border-color: var(--secondary-color);
+  background-color: #ddf4ff;
+  color: var(--secondary-color);
+}
+
+.duo-button:disabled {
+  background-color: #e5e5e5;
+  color: #afafaf;
+  box-shadow: 0 4px 0 #cecece;
+  cursor: not-allowed;
+  transform: none;
+}
+
+input {
+  width: 100%;
+  padding: 16px;
+  border: 2px solid var(--border-color);
+  border-radius: 16px;
+  font-size: 1.1rem;
+  box-sizing: border-box;
+  margin-bottom: 16px;
+  background-color: #f7f7f7;
+  color: var(--text-main);
+  transition: border-color 0.2s;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--secondary-color);
+  background-color: white;
+}
