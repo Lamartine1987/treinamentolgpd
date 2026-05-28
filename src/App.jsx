@@ -32,7 +32,7 @@ function App() {
           <div style={{ maxWidth: '600px', margin: '0 auto', minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: 'white', boxShadow: '0 0 20px rgba(0,0,0,0.1)' }}>
             <Routes>
               <Route path="/" element={!user ? <Home onLogin={handleUpdateUser} /> : <Navigate to="/map" />} />
-              <Route path="/map" element={user ? <Map user={user} /> : <Navigate to="/" />} />
+              <Route path="/map" element={user ? <Map user={user} onUpdateUser={handleUpdateUser} /> : <Navigate to="/" />} />
               <Route path="/lesson/:moduleId" element={user ? <Lesson user={user} onUpdateUser={handleUpdateUser} /> : <Navigate to="/" />} />
               <Route path="/certificate" element={user ? <Certificate user={user} /> : <Navigate to="/" />} />
               <Route path="*" element={<Navigate to="/" />} />

@@ -1,16 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchCourseContent, computeAllStages } from '../utils/contentService';
-import { Star, BookOpen, Shield, ArrowLeft, Zap, Flame, Award, Settings, Check } from 'lucide-react';
+import { Star, BookOpen, Shield, ArrowLeft, Zap, Flame, Award, Settings, Check, User } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { db } from '../firebase';
+import { doc, updateDoc } from 'firebase/firestore';
+import ModernDialog from '../components/ModernDialog';
 
-const Map = ({ user }) => {
+const Map = ({ user, onUpdateUser }) => {
   const navigate = useNavigate();
   const completedModules = user.completedModules || [0];
   
   const [unitsData, setUnitsData] = useState([]);
   const [allStages, setAllStages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showProfile, setShowProfile] = useState(false);
+  const [editName, setEditName] = useState(user.name || '');
+  const [editMatricula, setEditMatricula] = useState(user.matricula || '');
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  const [dialog, setDialog] = useState({ isOpen: false, type: 'alert', title: '', message: '', onConfirm: null, onCancel: null });
+  const showAlert = (title, message) => {
+    setDialog({ isOpen: true, type: 'alert', title, message, onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false })) });
+  };
+
+  const handleSaveProfile = async () => {
+    setSavingProfile(true);
+    try {
+      const userRef = doc(db, 'users', user.email.toLowerCase());
+      await updateDoc(userRef, { name: editName, matricula: editMatricula });
+      onUpdateUser({ ...user, name: editName, matricula: editMatricula });
+      setShowProfile(false);
+      showAlert('Sucesso', 'Perfil atualizado com sucesso!');
+    } catch (err) {
+      console.error(err);
+      showAlert('Erro', 'Erro ao atualizar perfil.');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   useEffect(() => {
     const loadContent = async () => {
@@ -69,6 +97,13 @@ const Map = ({ user }) => {
                 <Settings size={20} /> Painel Master
               </button>
             )}
+
+            <button 
+                onClick={() => setShowProfile(true)}
+                style={{ backgroundColor: 'white', color: '#1899d6', border: 'none', borderRadius: '12px', padding: '6px 12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', marginRight: '8px' }}
+            >
+              <User size={20} /> Meu Perfil
+            </button>
 
             <div style={{ 
               backgroundColor: 'rgba(255,255,255,0.2)', 
@@ -327,6 +362,42 @@ const Map = ({ user }) => {
           </motion.div>
         )}
       </div>
+
+      {/* Modal Meu Perfil */}
+      {showProfile && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '24px' }}>
+          <div style={{ backgroundColor: 'white', padding: '32px', borderRadius: '24px', width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative' }}>
+            <h2 style={{ margin: 0, color: 'var(--text-main)', textAlign: 'center' }}>Meu Perfil</h2>
+            
+            <div>
+              <label style={{ fontWeight: 'bold', color: 'var(--text-light)', display: 'block', marginBottom: '8px' }}>E-mail Institucional (Apenas Leitura)</label>
+              <input type="text" value={user.email} disabled style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '2px solid #e5e5e5', backgroundColor: '#f5f5f5', color: '#afafaf', fontSize: '1rem' }} />
+              <span style={{ fontSize: '0.8rem', color: '#afafaf', marginTop: '4px', display: 'block' }}>Para alterar o e-mail, solicite ao administrador.</span>
+            </div>
+
+            <div>
+              <label style={{ fontWeight: 'bold', color: 'var(--text-light)', display: 'block', marginBottom: '8px' }}>Nome Completo</label>
+              <input type="text" value={editName} onChange={e => setEditName(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '2px solid #e5e5e5', fontSize: '1rem' }} />
+            </div>
+
+            <div>
+              <label style={{ fontWeight: 'bold', color: 'var(--text-light)', display: 'block', marginBottom: '8px' }}>Número da Matrícula</label>
+              <input type="text" value={editMatricula} onChange={e => setEditMatricula(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '2px solid #e5e5e5', fontSize: '1rem' }} />
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+              <button onClick={() => setShowProfile(false)} style={{ flex: 1, padding: '16px', borderRadius: '16px', border: '2px solid #e5e5e5', backgroundColor: 'white', color: 'var(--text-light)', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer' }}>
+                Cancelar
+              </button>
+              <button onClick={handleSaveProfile} disabled={savingProfile} style={{ flex: 1, padding: '16px', borderRadius: '16px', border: 'none', backgroundColor: '#1cb0f6', color: 'white', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', boxShadow: '0 4px 0 #1899d6' }}>
+                {savingProfile ? 'Salvando...' : 'Salvar Dados'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ModernDialog {...dialog} />
     </div>
   );
 };

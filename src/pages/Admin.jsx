@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchCourseContent, saveCourseContent } from '../utils/contentService';
-import { ArrowLeft, Save, Plus, Trash2, ChevronDown, ChevronUp, BookOpen, Users, Download } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, ChevronDown, ChevronUp, BookOpen, Users, Download, Edit } from 'lucide-react';
 import { db } from '../firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import ModernDialog from '../components/ModernDialog';
 
 const Admin = ({ user }) => {
   const navigate = useNavigate();
@@ -16,6 +17,79 @@ const Admin = ({ user }) => {
   const [activeTab, setActiveTab] = useState('content');
   const [usersList, setUsersList] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+
+  const [editingUser, setEditingUser] = useState(null);
+  const [savingUser, setSavingUser] = useState(false);
+
+  const [dialog, setDialog] = useState({ isOpen: false, type: 'alert', title: '', message: '', onConfirm: null, onCancel: null });
+  const showAlert = (title, message) => {
+    setDialog({ isOpen: true, type: 'alert', title, message, onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false })) });
+  };
+  const showConfirm = (title, message, onConfirmCallback) => {
+    setDialog({
+      isOpen: true,
+      type: 'confirm',
+      title,
+      message,
+      onConfirm: () => {
+        setDialog(prev => ({ ...prev, isOpen: false }));
+        onConfirmCallback();
+      },
+      onCancel: () => setDialog(prev => ({ ...prev, isOpen: false }))
+    });
+  };
+
+  const handleSaveUser = async () => {
+    setSavingUser(true);
+    try {
+      const originalRef = doc(db, 'users', editingUser.originalEmail.toLowerCase());
+      
+      let finalCompletedModules = [0];
+      for(let i=1; i<=Number(editingUser.completedModulesCount); i++) {
+        finalCompletedModules.push(i);
+      }
+
+      const userDataToSave = {
+        name: editingUser.name,
+        email: editingUser.email.toLowerCase(),
+        matricula: editingUser.matricula,
+        xp: Number(editingUser.xp),
+        streakCount: Number(editingUser.streakCount),
+        completedModules: finalCompletedModules,
+        lastLoginDate: editingUser.lastLoginDate || null
+      };
+
+      if (editingUser.originalEmail.toLowerCase() !== editingUser.email.toLowerCase()) {
+        const newRef = doc(db, 'users', editingUser.email.toLowerCase());
+        await setDoc(newRef, userDataToSave);
+        await deleteDoc(originalRef);
+      } else {
+        await updateDoc(originalRef, userDataToSave);
+      }
+
+      showAlert('Sucesso', 'Usuário salvo com sucesso!');
+      setEditingUser(null);
+      loadUsers();
+    } catch (err) {
+      console.error(err);
+      showAlert('Erro', 'Erro ao salvar usuário.');
+    } finally {
+      setSavingUser(false);
+    }
+  };
+
+  const handleDeleteUser = async (userEmail) => {
+    showConfirm('Atenção', `Tem certeza que deseja DELETAR PERMANENTEMENTE o usuário ${userEmail}? Todo o progresso será perdido e essa ação não pode ser desfeita.`, async () => {
+      try {
+        await deleteDoc(doc(db, 'users', userEmail.toLowerCase()));
+        showAlert('Sucesso', 'Usuário deletado com sucesso!');
+        loadUsers();
+      } catch (error) {
+        console.error(error);
+        showAlert('Erro', 'Erro ao deletar usuário.');
+      }
+    });
+  };
 
   const loadUsers = async () => {
     setLoadingUsers(true);
@@ -37,7 +111,7 @@ const Admin = ({ user }) => {
       setUsersList(fetchedUsers);
     } catch (err) {
       console.error(err);
-      alert('Erro ao carregar usuários.');
+      showAlert('Erro', 'Erro ao carregar usuários.');
     } finally {
       setLoadingUsers(false);
     }
@@ -84,9 +158,9 @@ const Admin = ({ user }) => {
     setSaving(true);
     try {
       await saveCourseContent(units);
-      alert('Conteúdo atualizado com sucesso para todos os usuários!');
+      showAlert('Sucesso', 'Conteúdo atualizado com sucesso para todos os usuários!');
     } catch (err) {
-      alert('Erro ao salvar. Verifique o console.');
+      showAlert('Erro', 'Erro ao salvar. Verifique o console.');
     } finally {
       setSaving(false);
     }
@@ -126,7 +200,7 @@ const Admin = ({ user }) => {
     const newUnits = [...units];
     const targetQ = newUnits[uIdx].stages[sIdx].questions[qIdx];
     if (targetQ.options.length <= 2) {
-      alert("A pergunta precisa ter pelo menos 2 alternativas.");
+      showAlert('Aviso', "A pergunta precisa ter pelo menos 2 alternativas.");
       return;
     }
     
@@ -157,11 +231,11 @@ const Admin = ({ user }) => {
   };
 
   const deleteUnit = (uIdx) => {
-    if (window.confirm("Tem certeza que deseja excluir este Módulo INTEIRO? (Todas as bolinhas dele serão apagadas)")) {
+    showConfirm('Atenção', "Tem certeza que deseja excluir este Módulo INTEIRO? (Todas as bolinhas dele serão apagadas)", () => {
       const newUnits = [...units];
       newUnits.splice(uIdx, 1);
       setUnits(newUnits);
-    }
+    });
   };
 
   const addStage = (uIdx) => {
@@ -176,11 +250,11 @@ const Admin = ({ user }) => {
   };
 
   const deleteStage = (uIdx, sIdx) => {
-    if (window.confirm("Tem certeza que deseja excluir esta bolinha e todas as suas perguntas?")) {
+    showConfirm('Atenção', "Tem certeza que deseja excluir esta bolinha e todas as suas perguntas?", () => {
       const newUnits = [...units];
       newUnits[uIdx].stages.splice(sIdx, 1);
       setUnits(newUnits);
-    }
+    });
   };
 
   const addQuestion = (uIdx, sIdx) => {
@@ -196,11 +270,11 @@ const Admin = ({ user }) => {
   };
 
   const deleteQuestion = (uIdx, sIdx, qIdx) => {
-    if (window.confirm("Excluir esta pergunta?")) {
+    showConfirm('Atenção', "Excluir esta pergunta?", () => {
       const newUnits = [...units];
       newUnits[uIdx].stages[sIdx].questions.splice(qIdx, 1);
       setUnits(newUnits);
-    }
+    });
   };
 
   if (loading) return <div style={{ padding: '50px', textAlign: 'center' }}>Carregando dados do servidor...</div>;
@@ -506,6 +580,7 @@ const Admin = ({ user }) => {
                     <th style={{ padding: '20px 16px', borderBottom: '2px solid #e5e5e5', textAlign: 'center', fontSize: '1.1rem' }}>XP Total</th>
                     <th style={{ padding: '20px 16px', borderBottom: '2px solid #e5e5e5', textAlign: 'center', fontSize: '1.1rem' }}>Ofensiva</th>
                     <th style={{ padding: '20px 16px', borderBottom: '2px solid #e5e5e5', textAlign: 'center', fontSize: '1.1rem' }}>Último Acesso</th>
+                    <th style={{ padding: '20px 16px', borderBottom: '2px solid #e5e5e5', textAlign: 'center', fontSize: '1.1rem' }}>Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -533,6 +608,22 @@ const Admin = ({ user }) => {
                         <td style={{ padding: '16px', textAlign: 'center', fontWeight: 'bold', color: '#ffc800', fontSize: '1.2rem' }}>{u.xp || 0}</td>
                         <td style={{ padding: '16px', textAlign: 'center', color: 'var(--text-main)', fontWeight: 'bold' }}>{u.streakCount || 0} <span style={{ fontWeight: 'normal', color: 'var(--text-light)' }}>dias</span></td>
                         <td style={{ padding: '16px', textAlign: 'center', color: 'var(--text-main)' }}>{u.lastLoginDate ? new Date(u.lastLoginDate).toLocaleDateString('pt-BR') : '-'}</td>
+                        <td style={{ padding: '16px', textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                          <button 
+                            onClick={() => setEditingUser({ ...u, completedModulesCount: u.completedModules ? Math.max(0, u.completedModules.length - 1) : 0, originalEmail: u.email })}
+                            title="Editar Usuário"
+                            style={{ background: 'none', border: 'none', color: '#1cb0f6', cursor: 'pointer', padding: '8px' }}
+                          >
+                            <Edit size={20} />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteUser(u.email)}
+                            title="Excluir Usuário"
+                            style={{ background: 'none', border: 'none', color: '#ff4b4b', cursor: 'pointer', padding: '8px' }}
+                          >
+                            <Trash2 size={20} />
+                          </button>
+                        </td>
                       </tr>
                     )})
                   )}
@@ -540,8 +631,61 @@ const Admin = ({ user }) => {
               </table>
             </div>
           )}
+
+          {/* Modal Edição de Usuário Admin */}
+          {editingUser && (
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '24px' }}>
+              <div style={{ backgroundColor: 'white', padding: '32px', borderRadius: '24px', width: '100%', maxWidth: '500px', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '90vh', overflowY: 'auto' }}>
+                <h2 style={{ margin: 0, color: 'var(--text-main)', textAlign: 'center', marginBottom: '16px' }}>Editar Usuário</h2>
+                
+                <div>
+                  <label style={{ fontWeight: 'bold', color: 'var(--text-light)', display: 'block', marginBottom: '8px' }}>Nome</label>
+                  <input type="text" value={editingUser.name || ''} onChange={e => setEditingUser({...editingUser, name: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '2px solid #e5e5e5', fontSize: '1rem' }} />
+                </div>
+
+                <div>
+                  <label style={{ fontWeight: 'bold', color: 'var(--text-light)', display: 'block', marginBottom: '8px' }}>E-mail (Se alterar, o progresso migrará automaticamente)</label>
+                  <input type="email" value={editingUser.email || ''} onChange={e => setEditingUser({...editingUser, email: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '2px solid #e5e5e5', fontSize: '1rem' }} />
+                </div>
+
+                <div>
+                  <label style={{ fontWeight: 'bold', color: 'var(--text-light)', display: 'block', marginBottom: '8px' }}>Matrícula</label>
+                  <input type="text" value={editingUser.matricula || ''} onChange={e => setEditingUser({...editingUser, matricula: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '2px solid #e5e5e5', fontSize: '1rem' }} />
+                </div>
+
+                <div style={{ display: 'flex', gap: '16px' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontWeight: 'bold', color: '#ffc800', display: 'block', marginBottom: '8px' }}>XP Total</label>
+                    <input type="number" value={editingUser.xp || 0} onChange={e => setEditingUser({...editingUser, xp: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '2px solid #ffc800', fontSize: '1rem' }} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontWeight: 'bold', color: '#ff9600', display: 'block', marginBottom: '8px' }}>Ofensiva (Dias)</label>
+                    <input type="number" value={editingUser.streakCount || 0} onChange={e => setEditingUser({...editingUser, streakCount: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '2px solid #ff9600', fontSize: '1rem' }} />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ fontWeight: 'bold', color: '#58cc02', display: 'block', marginBottom: '8px' }}>Bolinhas Concluídas</label>
+                  <input type="number" min="0" value={editingUser.completedModulesCount} onChange={e => setEditingUser({...editingUser, completedModulesCount: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '2px solid #58cc02', fontSize: '1rem' }} />
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-light)', marginTop: '4px', display: 'block' }}>Zere ou ajuste a quantidade de bolinhas que o aluno já finalizou.</span>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                  <button onClick={() => setEditingUser(null)} style={{ flex: 1, padding: '16px', borderRadius: '16px', border: '2px solid #e5e5e5', backgroundColor: 'white', color: 'var(--text-light)', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer' }}>
+                    Cancelar
+                  </button>
+                  <button onClick={handleSaveUser} disabled={savingUser} style={{ flex: 1, padding: '16px', borderRadius: '16px', border: 'none', backgroundColor: '#1cb0f6', color: 'white', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', boxShadow: '0 4px 0 #1899d6' }}>
+                    {savingUser ? 'Salvando...' : 'Salvar Aluno'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       )}
+
+      <ModernDialog {...dialog} />
     </div>
   );
 };

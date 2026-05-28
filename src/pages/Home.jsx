@@ -52,9 +52,9 @@ const Home = ({ onLogin }) => {
   return (
     <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', textAlign: 'center' }}>
       <Shield size={80} color="var(--primary-color)" style={{ marginBottom: '16px' }} />
-      <h1 style={{ color: 'var(--primary-color)', fontSize: '2.5rem', marginBottom: '8px', marginTop: 0 }}>Treinamento LGPD</h1>
+      <h1 style={{ color: 'var(--primary-color)', fontSize: '2.5rem', marginBottom: '8px', marginTop: 0 }}>Orientações LGPD</h1>
       <p style={{ color: 'var(--text-light)', marginBottom: '32px', fontSize: '1.1rem' }}>
-        Aprenda de forma rápida e prática como proteger os dados da nossa Autarquia.
+        Orientações de forma rápida e prática sobre proteção de dados.
       </p>
       
       <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: '400px' }}>
